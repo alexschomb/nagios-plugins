@@ -2,7 +2,7 @@
 #
 #  Author: Hari Sekhon
 #  Date: 2008-02-28 14:49:50 +0000 (Thu, 28 Feb 2008)
-# 
+#
 #  http://github.com/harisekhon/nagios-plugins
 #
 #  License: see accompanying LICENSE file
@@ -37,7 +37,7 @@ class VncTester(NagiosTester):
 
         super(VncTester, self).__init__()
 
-        #self.port       = ""
+        self.port       = ""
         self.passwdfile = ""
 
 
@@ -47,46 +47,47 @@ class VncTester(NagiosTester):
         on the environment and settings"""
 
         self.validate_host()
-        #self.validate_port()
+        self.validate_port()
         self.validate_passwdfile()
         self.validate_timeout()
 
 
-#    def validate_port(self):
-#        """Exits with an error if the port is not valid"""
-#
-#        if self.port == None:
-#            self.port = ""
-#        else:
-#            try:
-#                self.port = int(self.port)
-#                if not 1 <= self.port <= 65535:
-#                    raise ValueError
-#            except ValueError:
-#                end(UNKNOWN, "port number must be a whole number between " \
-#                           + "1 and 65535")
+    def validate_port(self):
+        """Exits with an error if the port is not valid"""
+
+        if self.port == None:
+            self.port = DEFAULT_PORT
+        else:
+            try:
+                self.port = int(self.port)
+                if not 1 <= self.port <= 65535:
+                    raise ValueError
+            except ValueError:
+                end(UNKNOWN, "port number must be a whole number between " \
+                           + "1 and 65535")
 
 
     def validate_passwdfile(self):
         """Exits with an error if the passwd file is not given
         or if the file is non-existent or cannot be accessed for any reason"""
 
-        if self.passwdfile == None or self.passwdfile == "":
-            end(UNKNOWN, "You must supply a passwd file containing " \
-                       + "the VNC password in order to connect. See --help " \
-                       + "for details")
+        if not self.passwdfile == None:
+            if self.passwdfile == "":
+                end(UNKNOWN, "You must supply a passwd file containing " \
+                           + "the VNC password in order to connect. See --help " \
+                           + "for details")
 
-        if not os.path.exists(self.passwdfile):
-            end(UNKNOWN, "vnc passwd file '%s' does not exist" \
-                                                        % self.passwdfile)
+            if not os.path.exists(self.passwdfile):
+                end(UNKNOWN, "vnc passwd file '%s' does not exist" \
+                                                            % self.passwdfile)
 
-        if not os.path.isfile(self.passwdfile):
-            end(UNKNOWN, "'%s' is not a file, " \
-                       + "cannot be used as the vnc passwd file")
+            if not os.path.isfile(self.passwdfile):
+                end(UNKNOWN, "'%s' is not a file, " \
+                           + "cannot be used as the vnc passwd file")
 
-        if not os.access(self.passwdfile, os.R_OK):
-            end(UNKNOWN, "vnc passwd file '%s' is not " % self.passwdfile \
-                       + "readable, please allow read permission on this file")
+            if not os.access(self.passwdfile, os.R_OK):
+                end(UNKNOWN, "vnc passwd file '%s' is not " % self.passwdfile \
+                           + "readable, please allow read permission on this file")
 
 
     def test_vnc(self):
@@ -97,8 +98,12 @@ class VncTester(NagiosTester):
 
         self.vprint(2, "now running vnc test")
 
-        cmd = "%s -compresslevel 0 -passwd %s -vncQuality 0 %s /dev/null" \
-              % (BIN, self.passwdfile, self.server)
+        if self.passwdfile == None:
+            cmd = "%s -compresslevel 0 -port %s -vncQuality 0 %s /dev/null" \
+                  % (BIN, self.port, self.server)
+        else:
+            cmd = "%s -compresslevel 0 -passwd %s -port %s -vncQuality 0 %s /dev/null" \
+                  % (BIN, self.passwdfile, self.port, self.server)
 
         result, output = self.run(cmd)
 
@@ -141,12 +146,11 @@ def main():
                        help="The Hostname or IP Address of the VNC " \
                           + "server")
 
-# vncsnapshot doesn't support ports yet
-#    parser.add_option( "-p",
-#                       "--port",
-#                       dest="port",
-#                       help="The port on the server to test. Defaults to %s" \
-#                                                                % DEFAULT_PORT)
+    parser.add_option( "-p",
+                       "--port",
+                       dest="port",
+                       help="The port on the server to test. Defaults to %s" \
+                                                                % DEFAULT_PORT)
 
     parser.add_option( "-f",
                        "--passwd-file",
@@ -199,7 +203,7 @@ def main():
         sys.exit(UNKNOWN)
 
     tester.passwdfile = options.passwdfile
-    #tester.port       = options.port
+    tester.port       = options.port
     tester.server     = options.server
     tester.timeout    = options.timeout
     tester.verbosity  = options.verbosity
